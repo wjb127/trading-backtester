@@ -255,3 +255,64 @@ async def delete_backtest(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/{backtest_id}/report")
+async def download_backtest_report(
+    backtest_id: UUID,
+    supabase: Client = Depends(get_supabase)
+):
+    """백테스트 PDF 리포트 다운로드"""
+    from fastapi.responses import FileResponse
+    from app.services.report_generator import ReportGenerator
+    import os
+    import tempfile
+
+    try:
+        # 백테스트 정보 조회
+        backtest_response = supabase.table("bt_backtests")\
+            .select("*")\
+            .eq("id", str(backtest_id))\
+            .execute()
+
+        if not backtest_response.data:
+            raise HTTPException(status_code=404, detail="Backtest not found")
+
+        backtest = backtest_response.data[0]
+
+        # 거래 기록 조회
+        trades_response = supabase.table("bt_backtest_trades")\
+            .select("*")\
+            .eq("backtest_id", str(backtest_id))\
+            .order("timestamp")\
+            .execute()
+
+        trades = trades_response.data or []
+
+        # 수익 곡선 데이터 생성
+        equity_curve = []
+        for trade in trades:
+            equity_curve.append({
+                "timestamp": trade["timestamp"],
+                "value": trade["balance"] + (trade["position"] * trade["price"])
+            })
+
+        # PDF 생성
+        temp_dir = tempfile.gettempdir()
+        pdf_filename = os.path.join(temp_dir, f"backtest_{backtest_id}.pdf")
+
+        report = ReportGenerator(pdf_filename)
+        report.generate_backtest_report(backtest, trades, equity_curve)
+        report.save()
+
+        # 파일 다운로드 응답
+        return FileResponse(
+            pdf_filename,
+            media_type="application/pdf",
+            filename=f"backtest_report_{backtest['symbol']}_{backtest['start_date']}.pdf"
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

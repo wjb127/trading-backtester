@@ -162,6 +162,39 @@ export default function Strategies() {
     }
   }
 
+  const handleOptimize = async (strategyId: string) => {
+    const symbol = prompt('심볼을 입력하세요 (예: AAPL):', 'AAPL')
+    if (!symbol) return
+
+    const method = prompt('최적화 방법을 선택하세요\n1: Grid Search\n2: Bayesian\n3: Random Search', '1')
+    const methods = {'1': 'grid', '2': 'bayesian', '3': 'random'}
+    const selectedMethod = methods[method as keyof typeof methods] || 'grid'
+
+    try {
+      const response = await fetch(
+        `http://localhost:8000/api/v1/strategies/${strategyId}/optimize?symbol=${symbol}&start_date=2023-01-01&end_date=2024-01-01&method=${selectedMethod}&n_iter=20`,
+        { method: 'POST' }
+      )
+
+      if (response.ok) {
+        const result = await response.json()
+        const opt = result.optimization_result
+        alert(
+          `최적화 완료!\n\n` +
+          `방법: ${opt.method}\n` +
+          `최적 파라미터: ${JSON.stringify(opt.best_params, null, 2)}\n` +
+          `최고 수익률: ${opt.best_metrics.total_return}%\n` +
+          `반복 횟수: ${opt.total_iterations}`
+        )
+      } else {
+        alert('최적화 실패')
+      }
+    } catch (error) {
+      console.error('Failed to optimize:', error)
+      alert('최적화 중 오류가 발생했습니다')
+    }
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       <nav className="bg-white shadow-sm">
@@ -249,6 +282,12 @@ export default function Strategies() {
                           </p>
                         </div>
                         <div className="ml-4 flex space-x-2">
+                          <button
+                            onClick={() => handleOptimize(strategy.id)}
+                            className="px-3 py-1 border border-blue-300 text-sm font-medium rounded-md text-blue-700 bg-white hover:bg-blue-50"
+                          >
+                            최적화
+                          </button>
                           <button className="px-3 py-1 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
                             편집
                           </button>

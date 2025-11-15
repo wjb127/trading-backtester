@@ -116,6 +116,27 @@ export default function Backtests() {
     }
   }
 
+  const handleDownloadPDF = async (backtest_id: string) => {
+    try {
+      const response = await fetch(`http://localhost:8000/api/v1/backtests/${backtest_id}/report`)
+
+      if (response.ok) {
+        const blob = await response.blob()
+        const url = window.URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `backtest_report_${backtest_id}.pdf`
+        document.body.appendChild(a)
+        a.click()
+        a.remove()
+        window.URL.revokeObjectURL(url)
+      }
+    } catch (error) {
+      console.error('Failed to download PDF:', error)
+      alert('PDF 다운로드 실패')
+    }
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       <nav className="bg-white shadow-sm">
@@ -337,9 +358,15 @@ export default function Backtests() {
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                             <button
                               onClick={() => handleViewChart(backtest.id)}
-                              className="text-blue-600 hover:text-blue-900"
+                              className="text-blue-600 hover:text-blue-900 mr-3"
                             >
                               차트 보기
+                            </button>
+                            <button
+                              onClick={() => handleDownloadPDF(backtest.id)}
+                              className="text-green-600 hover:text-green-900"
+                            >
+                              PDF
                             </button>
                           </td>
                         </tr>
