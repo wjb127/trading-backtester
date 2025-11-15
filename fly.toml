@@ -1,0 +1,39 @@
+# Fly.io 앱 설정 파일 (단일 앱 배포)
+app = "trading-backtest"
+primary_region = "nrt" # Tokyo region (가장 가까운 리전)
+
+# 빌드 설정
+[build]
+  dockerfile = "Dockerfile.fly"
+
+# 환경 변수
+[env]
+  PORT = "8080"
+  NODE_ENV = "production"
+
+# HTTP 서비스 설정
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = true
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ["app"]
+
+  [[http_service.checks]]
+    interval = "10s"
+    timeout = "2s"
+    grace_period = "5s"
+    method = "GET"
+    path = "/health"
+
+# VM 설정
+[[vm]]
+  cpu_kind = "shared"
+  cpus = 1
+  memory_mb = 512
+
+# 볼륨 설정 (PostgreSQL 데이터)
+[mounts]
+  source = "postgres_data"
+  destination = "/data"
