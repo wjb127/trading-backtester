@@ -111,20 +111,27 @@ async def create_backtest(
         result = engine.execute(market_data)
 
         # 4. 백테스트 결과 저장
+        # 스키마에 맞게 result JSONB 필드에 모든 메트릭 저장
+        result_data = {
+            "final_capital": result.final_capital,
+            "total_return": result.metrics.get('total_return', 0),
+            "total_return_pct": result.metrics.get('total_return_pct', 0),
+            "max_drawdown": result.metrics.get('max_drawdown', 0),
+            "sharpe_ratio": result.metrics.get('sharpe_ratio', 0),
+            "total_trades": result.metrics.get('total_trades', 0),
+            "win_rate": result.metrics.get('win_rate', 0),
+            **result.metrics  # 나머지 메트릭도 포함
+        }
+
         backtest_record = {
             "strategy_id": backtest_data.strategy_id,
             "symbol": backtest_data.symbol,
             "start_date": backtest_data.start_date,
             "end_date": backtest_data.end_date,
-            "initial_capital": backtest_data.initial_capital,
-            "final_capital": result.final_capital,
-            "total_return": result.metrics.get('total_return', 0),
-            "max_drawdown": result.metrics.get('max_drawdown', 0),
-            "sharpe_ratio": result.metrics.get('sharpe_ratio', 0),
-            "total_trades": result.metrics.get('total_trades', 0),
-            "win_rate": result.metrics.get('win_rate', 0),
+            "initial_capital": float(backtest_data.initial_capital),
             "status": "completed",
-            "metrics": result.metrics,
+            "result": result_data,
+            "completed_at": datetime.now().isoformat(),
         }
 
         backtest_response = supabase.table("bt_backtests")\
@@ -143,14 +150,16 @@ async def create_backtest(
         if result.trades:
             trade_records = []
             for trade in result.trades:
+                # 스키마에 맞게 필드 매핑
+                # action -> trade_type, balance -> portfolio_value
                 trade_records.append({
                     "backtest_id": backtest_id,
-                    "timestamp": trade.timestamp.isoformat(),
-                    "action": trade.action,
-                    "price": trade.price,
-                    "quantity": trade.quantity,
-                    "balance": trade.balance,
-                    "position": trade.position,
+                    "timestamp": trade.timestamp.isoformat() if hasattr(trade.timestamp, 'isoformat') else str(trade.timestamp),
+                    "trade_type": trade.action if hasattr(trade, 'action') else (trade.trade_type if hasattr(trade, 'trade_type') else 'buy'),
+                    "price": float(trade.price),
+                    "quantity": float(trade.quantity),
+                    "commission": float(getattr(trade, 'commission', 0)),
+                    "portfolio_value": float(trade.balance if hasattr(trade, 'balance') else getattr(trade, 'portfolio_value', 0)),
                 })
 
             supabase.table("bt_backtest_trades")\

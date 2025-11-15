@@ -21,14 +21,14 @@ async def get_metrics(
     """성과 지표 조회"""
     try:
         response = supabase.table("bt_backtests")\
-            .select("metrics, total_return, max_drawdown, sharpe_ratio, total_trades, win_rate")\
+            .select("result")\
             .eq("id", str(backtest_id))\
             .execute()
 
         if not response.data:
             raise HTTPException(status_code=404, detail="Backtest not found")
 
-        return response.data[0]
+        return response.data[0].get("result", {})
 
     except HTTPException:
         raise
@@ -64,11 +64,12 @@ async def get_chart_data(
         trades = trades_response.data or []
 
         # 수익 곡선 데이터 생성
+        # portfolio_value 필드 사용
         equity_curve = []
         for trade in trades:
             equity_curve.append({
                 "timestamp": trade["timestamp"],
-                "value": trade["balance"] + (trade["position"] * trade["price"])
+                "value": trade.get("portfolio_value", 0)
             })
 
         # 시장 데이터
@@ -82,12 +83,13 @@ async def get_chart_data(
 
         market_data = market_response.data or []
 
+        result = backtest.get("result", {}) or {}
         return {
             "equity_curve": equity_curve,
             "trades": trades,
             "market_data": market_data,
             "initial_capital": backtest["initial_capital"],
-            "final_capital": backtest["final_capital"]
+            "final_capital": result.get("final_capital", backtest["initial_capital"])
         }
 
     except HTTPException:
@@ -114,15 +116,16 @@ async def compare_strategies(
 
             if response.data:
                 backtest = response.data[0]
+                result = backtest.get("result", {}) or {}
                 comparisons.append({
                     "backtest_id": backtest["id"],
                     "strategy_name": backtest.get("bt_strategies", {}).get("name", "Unknown"),
                     "symbol": backtest["symbol"],
-                    "total_return": backtest["total_return"],
-                    "max_drawdown": backtest["max_drawdown"],
-                    "sharpe_ratio": backtest["sharpe_ratio"],
-                    "total_trades": backtest["total_trades"],
-                    "win_rate": backtest["win_rate"],
+                    "total_return": result.get("total_return", 0),
+                    "max_drawdown": result.get("max_drawdown", 0),
+                    "sharpe_ratio": result.get("sharpe_ratio", 0),
+                    "total_trades": result.get("total_trades", 0),
+                    "win_rate": result.get("win_rate", 0),
                 })
 
         return {"comparisons": comparisons}

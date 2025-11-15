@@ -10,6 +10,16 @@ interface Strategy {
   name: string
 }
 
+interface BacktestResult {
+  final_capital?: number
+  total_return?: number
+  total_return_pct?: number
+  max_drawdown?: number
+  sharpe_ratio?: number
+  total_trades?: number
+  win_rate?: number
+}
+
 interface Backtest {
   id: string
   strategy_id: string
@@ -17,13 +27,8 @@ interface Backtest {
   start_date: string
   end_date: string
   initial_capital: number
-  final_capital: number
-  total_return: number
-  max_drawdown: number
-  sharpe_ratio: number
-  total_trades: number
-  win_rate: number
   status: string
+  result?: BacktestResult
   created_at: string
 }
 
@@ -91,7 +96,7 @@ export default function Backtests() {
 
       if (response.ok) {
         const result = await response.json()
-        alert(`백테스트 완료!\n수익률: ${result.metrics.total_return}%\n거래 횟수: ${result.metrics.total_trades}`)
+        alert(`백테스트 완료!\n수익률: ${result.metrics?.total_return || 0}%\n거래 횟수: ${result.metrics?.total_trades || 0}`)
         fetchBacktests()
       } else {
         const error = await response.json()
@@ -343,17 +348,17 @@ export default function Backtests() {
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                             {backtest.start_date} ~ {backtest.end_date}
                           </td>
-                          <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${backtest.total_return >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                            {backtest.total_return}%
+                          <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${(backtest.result?.total_return || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                            {backtest.result?.total_return?.toFixed(2) || '0.00'}%
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {backtest.max_drawdown}%
+                            {backtest.result?.max_drawdown?.toFixed(2) || '0.00'}%
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {backtest.sharpe_ratio}
+                            {backtest.result?.sharpe_ratio?.toFixed(2) || '0.00'}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {backtest.total_trades}
+                            {backtest.result?.total_trades || 0}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                             <button

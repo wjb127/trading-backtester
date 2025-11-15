@@ -119,15 +119,18 @@ class ReportGenerator:
         # 성과 요약
         self.add_section("Performance Summary")
 
+        # result 필드에서 메트릭 추출
+        result = backtest_data.get('result', {}) or {}
+
         metrics_data = [
             ['Metric', 'Value'],
             ['Initial Capital', f"${backtest_data.get('initial_capital', 0):,.2f}"],
-            ['Final Capital', f"${backtest_data.get('final_capital', 0):,.2f}"],
-            ['Total Return', f"{backtest_data.get('total_return', 0):.2f}%"],
-            ['Max Drawdown', f"{backtest_data.get('max_drawdown', 0):.2f}%"],
-            ['Sharpe Ratio', f"{backtest_data.get('sharpe_ratio', 0):.2f}"],
-            ['Total Trades', str(backtest_data.get('total_trades', 0))],
-            ['Win Rate', f"{backtest_data.get('win_rate', 0):.2f}%"],
+            ['Final Capital', f"${result.get('final_capital', 0):,.2f}"],
+            ['Total Return', f"{result.get('total_return', 0):.2f}%"],
+            ['Max Drawdown', f"{result.get('max_drawdown', 0):.2f}%"],
+            ['Sharpe Ratio', f"{result.get('sharpe_ratio', 0):.2f}"],
+            ['Total Trades', str(result.get('total_trades', 0))],
+            ['Win Rate', f"{result.get('win_rate', 0):.2f}%"],
         ]
 
         self.add_table(metrics_data, col_widths=[3*inch, 3*inch])
